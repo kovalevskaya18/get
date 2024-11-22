@@ -28,7 +28,4 @@ int main() {
 
     return 0;
 }
-// Для запуска всех тестов в командной строке надо написать
-// cmake -S . -B build
-// cmake --build build
-// cd build && ctest
+
