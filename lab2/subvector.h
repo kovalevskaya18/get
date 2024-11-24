@@ -108,7 +108,7 @@ public:
 
 
 
-    void swap(subvector& other) noexcept {
+    void swap(subvector& other) {
         std::swap(mas, other.mas);
         std::swap(top, other.top);
         std::swap(capacity, other.capacity);
