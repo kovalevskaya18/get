@@ -3,12 +3,14 @@
 #include <initializer_list>
 #include <iostream>
 #include <random>
+#include <cmath>
+#include <stdexcept>
 
 template <typename T>
 concept Arithmetic = requires(T a, T b) {
     { a + b } -> std::same_as<T>;
     { a - b } -> std::same_as<T>;
-    { a* b } -> std::same_as<T>;
+    { a * b } -> std::same_as<T>;
     { a / b } -> std::same_as<T>;
 
 };
@@ -166,11 +168,22 @@ class Matrix {
     }
     //возвращает ссылку на элемент, тогда его можно изменить
     T& operator()(unsigned int row, unsigned int col) {
-        return data_[row * cols_ + col];
+        try {
+            return data_[row * cols_ + col];
+        } catch (const std::out_of_range& e) {
+            std::cerr << "Out of range error in matrix element access: " << e.what() << std::endl;
+            throw;
+        }
     }
     //копирует нужный элемент, потом возвращает(копия не привязана к элементу матрицы)
     T operator()(unsigned int row, unsigned int col) const {
-        return data_[row * cols_ + col];
+        try {
+            return data_[row * cols_ + col];
+        }
+        catch (const std::out_of_range& e) {
+            std::cerr << "Out of range error in matrix element access: " << e.what() << std::endl;
+            throw;
+        }
     }
 
     // Дополнительно
@@ -272,30 +285,7 @@ class Matrix {
         }
         return submatrix;
     }
-    //вычисление детерминанта для матрицы с элементами типа T(возвращает детерминант как объект типа T)
 
-    T determinant()
-    requires Arithmetic<T>
-    {
-        if (rows_ != cols_) {
-            throw std::invalid_argument("Matrix must be square");
-        }
-        if (rows_ == 1) {
-            return (*this)(0, 0);
-        }
-        if (rows_ == 2) {
-            return (*this)(0, 0) * (*this)(1, 1) - (*this)(0, 1) * (*this)(1, 0);
-        }
-
-        T det = T();
-
-        for (int i = 0; i < rows_; ++i) {
-            // Рекурсивный вызов для подматрицы ( считаем детерминант по 1ой строке)
-            det =
-                det + (*this)(0, i) * eliminate_row_col(0, i).determinant() * (i % 2 == 0 ? 1 : -1);
-        }
-        return det;
-    }
     //матричное умножение
     Matrix operator*(const Matrix& other)
     requires Arithmetic<T>
@@ -431,7 +421,7 @@ requires std::convertible_to<T, double>
     Matrix<double> matrix(matrix_in);
     subvector<double> results(results_in);
     unsigned int n = matrix.rows();
-    double det = matrix.determinant();
+    double det = determinant(matrix);
     if (std::abs(det) < 1e-5) {
         throw std::invalid_argument("Matrix must not be singular");
     }
@@ -448,6 +438,7 @@ requires std::convertible_to<T, double>
         for (int j = 0; j < n; ++j) {
             std::swap(matrix(maxRow, j), matrix(i, j));
         }
+        
         std::swap(results[maxRow], results[i]);
 
         for (int k = i + 1; k < n; ++k) {
@@ -475,6 +466,19 @@ requires std::convertible_to<T, double>
 inline bool check_solution(
     const Matrix<double>& matrix, const subvector<double>& results,
     const subvector<double>& solution) {
-    subvector<double> check = matrix * solution - results;
-    return check.euclidian_norm() < 1e-5;
+    subvector<double> check;
+    try {
+        check = matrix * solution - results;
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid arguments for vector substraction: " << e.what() << std::endl;
+        throw;
+    }
+    try {
+        return check.euclidian_norm() < 1e-5;
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Invalid argument for euclidian norm: " << e.what() << std::endl;
+        throw;
+    }
 }
