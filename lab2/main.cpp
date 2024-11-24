@@ -1,3 +1,6 @@
+#include "matrix.h"
+#include <iostream>
+
 int main() {
     {
         int expectedDeterminant = 120;
@@ -25,6 +28,10 @@ int main() {
                 << std::endl;
         }
     }
+
+    std::cout << "All tests in main have passed successfully!" << std::endl;
+    std::cout << "Press any key to continue..." << std::endl;
+    std::cin.get();
 
     return 0;
 }
