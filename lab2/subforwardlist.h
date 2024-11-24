@@ -37,7 +37,7 @@ class subforwardlist {
         for (const auto& x : init) {
             push_back(x);
         }
-    }//convinient ctor to do like this: subforwardlist<int>({1, 2, 3})
+    }//convinient ctor to do like this: subforwardlist<int> x = {1, 2, 3};
 
     subforwardlist(const subforwardlist& other) : subforwardlist() {
         Node* copy = other.begin_;
@@ -77,7 +77,7 @@ class subforwardlist {
 
     ~subforwardlist() {
         clear();//очищение содержимого листа, но память всё ещё занята (ноды аллоцированы)
-        shrink_to_fit();//очистка всей испульзуемой памяти, инициализация листа как пустого
+        shrink_to_fit();//так как список теперь пустой, этот метод удалит все аллоцированные ноды
     }
 
     void swap(subforwardlist& other) {
