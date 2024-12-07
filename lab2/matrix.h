@@ -25,6 +25,16 @@ class Matrix {
     // предполагается, что матрица хранится построчно (Row-Major Ordering)
     unsigned int cols_{};
     unsigned int rows_{};
+    template <typename U>
+    friend Matrix<U> operator*(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
+    template <typename U>
+    friend Matrix<U> operator+(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
+    template <typename U>
+    friend subvector<U> operator*(const Matrix<U>& lhs, const subvector<U>& rhs) requires Arithmetic<U>;
+    template <typename U>
+    friend Matrix<U> operator-(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
+    template <typename U>
+    friend Matrix<U> operator*(const U& value, const Matrix<U>& rhs) requires Arithmetic<U>;
 
    public:
     Matrix() = default;//ctor default
@@ -152,19 +162,14 @@ class Matrix {
                 transposed(j, i) = (*this)(i, j);
             }
         }
-        *this = transposed;
+        *this = std::move(transposed);
         return *this;
     }
     //копирую себя, транспонирую и возвращаю
 
     Matrix transpose() const {
         Matrix transposed = Matrix(cols_, rows_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < cols_; ++j) {
-                transposed(j, i) = (*this)(i, j);
-            }
-        }
-        return transposed;
+        return transposed.transpose();
     }
     //возвращает ссылку на элемент, тогда его можно изменить
     T& operator()(unsigned int row, unsigned int col) {
@@ -210,9 +215,7 @@ class Matrix {
         }
 
         if (row_swaps % 2 == 1 && rows_ > 1) {
-            unsigned int i = 0;
-            unsigned int j = 1;
-            std::swap(row_perm[i], row_perm[j]);
+            std::swap(row_perm[0], row_perm[1]);
         }
 
         subvector<unsigned int> col_perm(cols_);
@@ -230,21 +233,17 @@ class Matrix {
         }
 
         if (col_swaps % 2 == 1 && cols_ > 1) {
-            unsigned int i = 0;
-            unsigned int j = 1;
-            std::swap(col_perm[i], col_perm[j]);
+            std::swap(col_perm[0], col_perm[1]);
         }
-        //создаём матрицу в которую копируем нашу матрицу
 
         Matrix temp(*this);
-
         for (unsigned int i = 0; i < rows_; ++i) {
             for (unsigned int j = 0; j < cols_; ++j) {
-                (*this)(i, j) = temp(row_perm[i], col_perm[j]);//меняем местами строки и столбцы в нашей матрице
-                                                               //через созданную матрицу temp
+                (*this)(i, j) = temp(row_perm[i], col_perm[j]);
             }
         }
     }
+
     //создание подматрицы
     Matrix submatrix(
         unsigned int row_begin, unsigned int col_begin, unsigned int row_end,
@@ -286,129 +285,170 @@ class Matrix {
         return submatrix;
     }
 
-    //матричное умножение
-    Matrix operator*(const Matrix& other)
-    requires Arithmetic<T>
-    {
-        if (cols_ != other.rows_) {
-            throw std::invalid_argument("Matrix dimensions must be compatible");
-        }
-        Matrix result(rows_, other.cols_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < other.cols_; ++j) {
-                for (unsigned k = 0; k < cols_; ++k) {
-                    result(i, j) = result(i, j) + (*this)(i, k) * other(k, j);
-                }
-            }
-        }
-        return result;
-    }
-    //умножение матрицы на вектор
-    subvector<T> operator*(const subvector<T>& other) const
-    requires Arithmetic<T>
-    {
-        if (cols_ != other.size()) {
-            throw std::invalid_argument("Matrix and vector dimensions must be compatible");
-        }
-        subvector<T> result(rows_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < cols_; ++j) {
-                result[i] = result[i] + (*this)(i, j) * other[j];
-            }
-        }
-        return result;
-    }
-    //умножение матрицы на константу
-
-    Matrix operator*(const T& value)
-    requires Arithmetic<T>
-    {
-        Matrix result(rows_, cols_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < cols_; ++j) {
-                result(i, j) = (*this)(i, j) * value;
-            }
-        }
-        return result;
-    }
-    //сложение матриц
-    Matrix operator+(const Matrix& other)
-    requires Arithmetic<T>
-    {
-        if (rows_ != other.rows_ || cols_ != other.cols_) {
-            throw std::invalid_argument("Matrix dimensions must be compatible");
-        }
-        Matrix result(rows_, cols_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < cols_; ++j) {
-                result(i, j) = (*this)(i, j) + other(i, j);
-            }
-        }
-        return result;
-    }
-    //вычитание матриц
-    Matrix operator-(const Matrix& other)
-    requires Arithmetic<T>
-    {
-        if (rows_ != other.rows_ || cols_ != other.cols_) {
-            throw std::invalid_argument("Matrix dimensions must be compatible");
-        }
-        Matrix result(rows_, cols_);
-        for (unsigned i = 0; i < rows_; ++i) {
-            for (unsigned j = 0; j < cols_; ++j) {
-                result(i, j) = (*this)(i, j) - other(i, j);
-            }
-        }
-        return result;
-    }
 
     // 5) Любые методы, которые вам будут удобны для работы с матрицей
     // например, созданием подматрицы, перестановка строк (столбцов), умонжение
     // строки (столбца) на число и так далее
+
+    //вычисление детерминанта
+    //функция ниже более быстрая, приводит матрицу к верхнетреугольному виду и считает произведение элементов на главной диагонали. Чтобы не переусложнять решено сделать ее только для тех типов, которые приводятся к double.
+
+
 };
-//вычисление детерминанта
-//функция ниже более быстрая, приводит матрицу к верхнетреугольному виду и считает произведение элементов на главной диагонали. Чтобы не переусложнять решено сделать ее только для тех типов, которые приводятся к double.
+
+//сложение матриц
 template <typename T>
-double determinant(const Matrix<T>& matrix_in)
-requires std::convertible_to<T, double>
-{
-    Matrix<double> matrix(matrix_in);
-    if (matrix.rows() != matrix.cols()) {
-        throw std::invalid_argument("Matrix must be square");
+Matrix<T> operator+(const Matrix<T>& lhs, const Matrix<T>& rhs) requires Arithmetic<T> {
+    if (lhs.rows() != rhs.rows() || lhs.cols() != rhs.cols()) {
+        throw std::invalid_argument("Matrix dimensions must be compatible");
     }
+    Matrix<T> result(lhs.rows(), lhs.cols());
+    for (unsigned i = 0; i < lhs.rows(); ++i) {
+        for (unsigned j = 0; j < lhs.cols(); ++j) {
+            result(i, j) = lhs(i, j) + rhs(i, j);
+        }
+    }
+    return result;
+}
+//матричное умножение
+template <typename T>
+Matrix<T> operator*(const Matrix<T>& lhs, const Matrix<T>& rhs) requires Arithmetic<T> {
+
+
+    if (lhs.cols() != rhs.rows()) {
+        throw std::invalid_argument("Matrix dimensions must be compatible");
+    }
+    Matrix<T> result(lhs.rows(), rhs.cols());
+    for (unsigned i = 0; i < lhs.rows(); ++i) {
+        for (unsigned j = 0; j < rhs.cols(); ++j) {
+            for (unsigned k = 0; k < lhs.cols(); ++k) {
+                result(i, j) = result(i, j) + lhs(i, k) * rhs(k, j);
+            }
+        }
+    }
+    return result;
+}
+
+
+//умножение матрицы на вектор
+template <typename T>
+subvector<T> operator*(const Matrix<T>& lhs, const subvector<T>& rhs)
+    requires Arithmetic<T>
+{
+    if (lhs.cols() != rhs.size()) {
+        throw std::invalid_argument("Matrix and vector dimensions must be compatible");
+    }
+    subvector<T> result(lhs.rows());
+    for (unsigned i = 0; i < lhs.rows(); ++i) {
+        for (unsigned j = 0; j < lhs.cols(); ++j) {
+            result[i] = result[i] + lhs(i, j) * rhs[j];
+        }
+    }
+    return result;
+}
+
+//вычитание матриц
+template <typename T>
+Matrix<T> operator-(const Matrix<T> & lhs, const Matrix<T> & rhs)
+    requires Arithmetic<T>
+{
+    if (lhs.rows() != rhs.rows() || lhs.cols() != rhs.cols()) {
+        throw std::invalid_argument("Matrix dimensions must be compatible");
+    }
+    Matrix<T> result(lhs.rows(), lhs.cols());
+    for (unsigned i = 0; i < lhs.rows(); ++i) {
+        for (unsigned j = 0; j < lhs.cols(); ++j) {
+            result(i, j) = lhs(i, j) - rhs(i, j);
+        }
+    }
+    return result;
+}
+//умножение матрицы на константу
+template <typename T>
+Matrix<T> operator*(const Matrix<T>& lhs, const T& value)
+    requires Arithmetic<T>
+{
+    Matrix<T> result(lhs.rows(), lhs.cols());
+    for (unsigned i = 0; i < lhs.rows(); ++i) {
+        for (unsigned j = 0; j < lhs.cols(); ++j) {
+            result(i, j) = lhs(i, j) * value;
+        }
+    }
+    return result;
+}
+
+template <typename U>
+Matrix<U> operator*(const U& value, const Matrix<U>& rhs) requires Arithmetic<U> {
+    return rhs * value;
+}
+
+
+double forward_elimination(Matrix<double>& matrix, subvector<double>& results) {
     unsigned int n = matrix.rows();
     double sign = 1;
     for (int i = 0; i < n; ++i) {
         double maxEl = matrix(i, i);
         int maxRow = i;
-
-
         for (int k = i + 1; k < n; ++k) {
             if (matrix(k, i) > maxEl) {
                 maxEl = matrix(k, i);
                 maxRow = k;
             }
         }
-
         for (int j = 0; j < n; ++j) {
             std::swap(matrix(maxRow, j), matrix(i, j));
         }
         if (maxRow != i) {
             sign = -sign;
         }
-
+        if (results.size() != 0) {
+            std::swap(results[maxRow], results[i]);
+        }
         for (int k = i + 1; k < n; ++k) {
             double factor = matrix(k, i) / matrix(i, i);
-
-
-
             for (int j = i; j < n; ++j) {
-                matrix(k, j) = matrix(k, j) - matrix(i, j) * factor;
+                matrix(k, j) -= matrix(i, j) * factor;
+            }
+            if (results.size() != 0) {
+                results[k] -= results[i] * factor;
             }
         }
     }
+    return sign;
+}
+
+//вычисление детерминанта
+//функция ниже более быстрая, приводит матрицу к верхнетреугольному виду и считает произведение элементов на главной диагонали. Чтобы не переусложнять решено сделать ее только для тех типов, которые приводятся к double.
+template <typename T>
+double determinant(const Matrix<T>& matrix_in)
+    requires std::convertible_to<T, double>
+{
+    Matrix<double> matrix(matrix_in);
+    if (matrix.rows() != matrix.cols()) {
+        throw std::invalid_argument("Matrix must be square");
+    }
+    unsigned int n = matrix.rows();
+    subvector<double> dummy;
+    for (unsigned int i = 0; i < matrix.rows(); ++i) {
+        for (unsigned int j = 0; j < matrix.cols(); ++j) {
+            std::cout << matrix(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
+    double sign = forward_elimination(matrix, dummy);
+    for (unsigned int i = 0; i < matrix.rows(); ++i) {
+        for (unsigned int j = 0; j < matrix.cols(); ++j) {
+            std::cout << matrix(i, j) << " ";
+        }
+        std::cout << std::endl;
+    }
+    std::cout << std::endl;
+    std::cout << std::endl;
     double det = sign;
     for (int i = 0; i < n; ++i) {
+        std::cout << matrix(i, i) << std::endl;
         det = det * matrix(i, i);
     }
     return det;
@@ -416,7 +456,7 @@ requires std::convertible_to<T, double>
 
 template <typename T>
 subvector<double> solve_system(Matrix<T> matrix_in, subvector<T> results_in)
-requires std::convertible_to<T, double>
+    requires std::convertible_to<T, double>
 {
     Matrix<double> matrix(matrix_in);
     subvector<double> results(results_in);
@@ -425,31 +465,7 @@ requires std::convertible_to<T, double>
     if (std::abs(det) < 1e-5) {
         throw std::invalid_argument("Matrix must not be singular");
     }
-    for (int i = 0; i < n; ++i) {
-        double maxEl = matrix(i, i);
-        int maxRow = i;
-        for (int k = i + 1; k < n; ++k) {
-            if (matrix(k, i) > maxEl) {
-                maxEl = matrix(k, i);
-                maxRow = k;
-            }
-        }
-
-        for (int j = 0; j < n; ++j) {
-            std::swap(matrix(maxRow, j), matrix(i, j));
-        }
-        
-        std::swap(results[maxRow], results[i]);
-
-        for (int k = i + 1; k < n; ++k) {
-            double factor = matrix(k, i) / matrix(i, i);
-            for (int j = i; j < n; ++j) {
-                matrix(k, j) -= matrix(i, j) * factor;
-            }
-            results[k] -= results[i] * factor;
-        }
-    }
-
+    forward_elimination(matrix, results);
     subvector<double> solution(n);
     for (int i = n - 1; i >= 0; --i) {
         solution[i] = results[i];
@@ -458,10 +474,8 @@ requires std::convertible_to<T, double>
         }
         solution[i] /= matrix(i, i);
     }
-
     return solution;
 }
-
 
 inline bool check_solution(
     const Matrix<double>& matrix, const subvector<double>& results,
@@ -482,3 +496,7 @@ inline bool check_solution(
         throw;
     }
 }
+
+
+
+
