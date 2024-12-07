@@ -1,3 +1,4 @@
+
 #include <algorithm>
 #include <initializer_list>
 #include <memory>
@@ -9,13 +10,13 @@ template <typename T>
 concept Arithmetic_plus = requires(T a, T b) {
     { a - b } -> std::same_as<T>;
     { a + b } -> std::same_as<T>;
-    { a * b } -> std::same_as<T>;
+    { a* b } -> std::same_as<T>;
     { a / b } -> std::same_as<T>;
     { std::convertible_to<T, double> };
 
 };  // поискав на cppreference можно понять что последнее это достаточное условие для
-    // std::sqrt(). Чтобы это условие выполнялось нужно чтобы у класса был
-    // определен оператор конверсии в double
+// std::sqrt(). Чтобы это условие выполнялось нужно чтобы у класса был
+// определен оператор конверсии в double
 
 
 template <typename T>
@@ -24,6 +25,7 @@ public: // for profilers, but this part must be private
     T* mas;
     unsigned int top;
     unsigned int capacity;
+
 
 public:
 
@@ -108,7 +110,7 @@ public:
 
 
 
-    void swap(subvector& other) {
+    void swap(subvector& other) noexcept {
         std::swap(mas, other.mas);
         std::swap(top, other.top);
         std::swap(capacity, other.capacity);
@@ -118,7 +120,7 @@ public:
         if (top == capacity) {
             resize(capacity == 0 ? 1 : 2 * capacity);
         }
-        mas[top]= d;
+        mas[top] = d;
         top++;
         return true;
     }
@@ -165,10 +167,8 @@ public:
 
 
 
-    T& operator[](unsigned int pos) {
-        if (pos >= top) {
-            throw std::out_of_range("Index out of range");
-        }
+    T& operator[](unsigned int pos) noexcept{
+
 
         return mas[pos];
     }
@@ -176,10 +176,8 @@ public:
 
 
 
-    const T& operator[](unsigned int pos) const {
-        if (pos >= top) {
-            throw std::out_of_range("Index out of range");
-        }
+    const T& operator[](unsigned int pos) const noexcept{
+
         return mas[pos];
     }
 
@@ -195,7 +193,7 @@ public:
     }
 
     double euclidian_norm() const
-    requires Arithmetic_plus<T>
+        requires Arithmetic_plus<T>
     {
         T result = 0;
         for (unsigned int i = 0; i < top; i++) {
