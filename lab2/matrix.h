@@ -25,16 +25,6 @@ class Matrix {
     // предполагается, что матрица хранится построчно (Row-Major Ordering)
     unsigned int cols_{};
     unsigned int rows_{};
-    template <typename U>
-    friend Matrix<U> operator*(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
-    template <typename U>
-    friend Matrix<U> operator+(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
-    template <typename U>
-    friend subvector<U> operator*(const Matrix<U>& lhs, const subvector<U>& rhs) requires Arithmetic<U>;
-    template <typename U>
-    friend Matrix<U> operator-(const Matrix<U>& lhs, const Matrix<U>& rhs) requires Arithmetic<U>;
-    template <typename U>
-    friend Matrix<U> operator*(const U& value, const Matrix<U>& rhs) requires Arithmetic<U>;
 
    public:
     Matrix() = default;//ctor default
@@ -429,26 +419,9 @@ double determinant(const Matrix<T>& matrix_in)
     }
     unsigned int n = matrix.rows();
     subvector<double> dummy;
-    for (unsigned int i = 0; i < matrix.rows(); ++i) {
-        for (unsigned int j = 0; j < matrix.cols(); ++j) {
-            std::cout << matrix(i, j) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
     double sign = forward_elimination(matrix, dummy);
-    for (unsigned int i = 0; i < matrix.rows(); ++i) {
-        for (unsigned int j = 0; j < matrix.cols(); ++j) {
-            std::cout << matrix(i, j) << " ";
-        }
-        std::cout << std::endl;
-    }
-    std::cout << std::endl;
-    std::cout << std::endl;
     double det = sign;
     for (int i = 0; i < n; ++i) {
-        std::cout << matrix(i, i) << std::endl;
         det = det * matrix(i, i);
     }
     return det;
